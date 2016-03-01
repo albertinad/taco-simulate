@@ -5,8 +5,6 @@ var cordovaServe = require('cordova-serve'),
     simulateServer = require('taco-simulate-server');
 
 module.exports = function (opts) {
-    require('./server/server').attach(simulateServer.app);
-
     var target = opts.target || 'chrome';
     var simHostUrl;
 
@@ -14,6 +12,8 @@ module.exports = function (opts) {
         simHostRoot: path.join(__dirname, 'sim-host'),
         node_modules:  path.resolve(__dirname, '..', 'node_modules')
     }).then(function (urls) {
+        require('./server/server').attach(simulateServer.app);
+
         simHostUrl = urls.simHostUrl;
         return cordovaServe.launchBrowser({target: target, url: urls.appUrl});
     }).then(function () {
@@ -27,4 +27,8 @@ module.exports = function (opts) {
             throw new Error(error);
         }
     });
+};
+
+module.exports.stop = function () {
+  simulateServer.stop();
 };
