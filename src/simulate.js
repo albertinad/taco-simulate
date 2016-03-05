@@ -29,6 +29,6 @@ module.exports = function (opts) {
     });
 };
 
-module.exports.stop = function () {
-  simulateServer.stop();
+module.exports.stopServer = function () {
+  return simulateServer.stopServer();
 };
