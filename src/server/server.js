@@ -2,10 +2,9 @@
 
 var path = require('path'),
     replaceStream = require('replacestream'),
-    send = require('send'),
-    simulateServer = require('taco-simulate-server');
+    send = require('send');
 
-module.exports.attach = function (app) {
+module.exports.attach = function (app, simHostDir) {
     app.get('/simulator/sim-host.css', function (request, response, next) {
         var userAgent = request.headers['user-agent'];
         if (userAgent.indexOf('Chrome') > -1 && userAgent.indexOf('Edge/') === -1) {
@@ -13,7 +12,7 @@ module.exports.attach = function (app) {
         } else {
             // If target browser isn't Chrome (user agent contains 'Chrome', but isn't 'Edge'), remove shadow dom stuff from
             // the CSS file. Also remove any sections marked as Chrome specific.
-            send(request, path.resolve(simulateServer.dirs.hostRoot['sim-host'], 'sim-host.css'), {
+            send(request, path.resolve(simHostDir, 'sim-host.css'), {
                 transform: function (stream) {
                     return stream
                         .pipe(replaceStream('> ::content >', '>'))

@@ -2,29 +2,70 @@
 
 var cordovaServe = require('cordova-serve'),
     path = require('path'),
-    simulateServer = require('taco-simulate-server');
+    SimulateServer = require('taco-simulate-server');
 
-module.exports = function (opts) {
-    require('./server/server').attach(simulateServer.app);
+/**
+ * @constructor
+ */
+function Simulate(opts) {
+    this._simulateServer = null;
+    this._target = null;
+    this._opts = opts;
+}
 
-    var target = opts.target || 'chrome';
-    var simHostUrl;
+Object.defineProperties(Simulate.prototype, {
+    'simulateServer': {
+        get: function () {
+            return this._simulateServer;
+        }
+    }
+});
 
-    return simulateServer(opts, {
+Simulate.prototype.start = function () {
+    this._target = this._opts.target || 'chrome';
+
+    this._simulateServer = new SimulateServer(this._opts, {
         simHostRoot: path.join(__dirname, 'sim-host'),
-        node_modules:  path.resolve(__dirname, '..', 'node_modules')
-    }).then(function (urls) {
-        simHostUrl = urls.simHostUrl;
-        return cordovaServe.launchBrowser({target: target, url: urls.appUrl});
+        node_modules: path.resolve(__dirname, '..', 'node_modules')
+    });
+
+    return this._simulateServer.start().then(function () {
+        var simHostRoot = this._simulateServer.dirs.hostRoot['sim-host'];
+
+        require('./server/server').attach(this._simulateServer.app, simHostRoot);
+
+        return this.launchBrowsers();
+    }.bind(this));
+};
+
+Simulate.prototype.launchBrowsers = function () {
+    var appUrl = this._simulateServer.appUrl,
+        simHostUrl = this._simulateServer.simHostUrl,
+        target = this._target;
+
+    return cordovaServe.launchBrowser({
+        target: target,
+        url: appUrl
     }).then(function () {
-        return cordovaServe.launchBrowser({target: target, url: simHostUrl});
+        return cordovaServe.launchBrowser({
+            target: target,
+            url: simHostUrl
+        });
     }).catch(function (error) {
         // Ensure server is closed, then rethrow so it can be handled by downstream consumers.
-        simulateServer.server && simulateServer.server.close();
+        this.stopServer();
         if (error instanceof Error) {
             throw error;
         } else {
             throw new Error(error);
         }
     });
+};
+
+Simulate.prototype.stopServer = function () {
+    this._simulateServer.stop();
+};
+
+module.exports = function (opts) {
+    return new Simulate(opts);
 };
